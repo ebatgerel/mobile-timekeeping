@@ -1,6 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+// If you run `flutterfire configure`, this file will be generated.
+// import 'firebase_options.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    // If using FlutterFire CLI generated options, prefer the generated options:
+    // await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    await Firebase.initializeApp();
+  } catch (e) {
+    // Safe to proceed without Firebase in pure UI/dev flows.
+    debugPrint('Firebase init skipped/failed: $e');
+  }
   runApp(const MobileTimekeepingApp());
 }
 

@@ -1,0 +1,74 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() { return request.auth != null; }
+    function userProfile() { return get(/databases/$(database)/documents/profiles/$(request.auth.uid)); }
+    function orgId() { return userProfile().data.orgId; }
+    function isManager() { return userProfile().data.role == 'manager'; }
+
+    // organizations/{orgId}
+    match /organizations/{org} {
+      allow read: if isSignedIn() && org == orgId();
+      allow create: if isSignedIn() && isManager();
+      allow update, delete: if isSignedIn() && org == orgId() && isManager();
+    }
+
+    // profiles/{userId}
+    match /profiles/{userId} {
+      allow read: if isSignedIn() && resource.data.orgId == orgId();
+      allow create: if isSignedIn() && request.resource.data.orgId == orgId() && userId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.orgId == orgId() && (userId == request.auth.uid || isManager());
+      allow delete: if false; // Deletions via function only
+    }
+
+    // projects/{projectId}
+    match /projects/{projectId} {
+      allow read: if isSignedIn() && resource.data.orgId == orgId();
+      allow create, update, delete: if isSignedIn() && isManager() && request.resource.data.orgId == orgId();
+    }
+
+    // time_entries/{entryId}
+    match /time_entries/{entryId} {
+      allow read: if isSignedIn() && resource.data.orgId == orgId();
+      allow create: if isSignedIn() && request.resource.data.orgId == orgId() && request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.orgId == orgId() && (resource.data.userId == request.auth.uid || isManager());
+      allow delete: if isSignedIn() && resource.data.orgId == orgId() && isManager();
+    }
+
+    // leave_requests/{leaveId}
+    match /leave_requests/{leaveId} {
+      allow read: if isSignedIn() && resource.data.orgId == orgId();
+      allow create: if isSignedIn() && request.resource.data.orgId == orgId() && request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.orgId == orgId() && (resource.data.userId == request.auth.uid || isManager());
+      allow delete: if isSignedIn() && resource.data.orgId == orgId() && isManager();
+    }
+
+    // channels/{channelId} and messages subcollection
+    match /channels/{channelId} {
+      allow read: if isSignedIn() && resource.data.orgId == orgId();
+      allow create, update, delete: if isSignedIn() && isManager() && request.resource.data.orgId == orgId();
+
+      match /messages/{messageId} {
+        allow read: if isSignedIn() && get(/databases/$(database)/documents/channels/$(channelId)).data.orgId == orgId();
+        allow create: if isSignedIn() && request.resource.data.orgId == orgId() &&
+          exists(/databases/$(database)/documents/channel_members/$(channelId)_$(request.auth.uid)) &&
+          request.resource.data.authorId == request.auth.uid;
+        allow delete: if isSignedIn() && request.resource.data.orgId == orgId() && isManager();
+        allow update: if false; // messages immutable
+      }
+    }
+
+    // channel_members composite key doc: {id: `${channelId}_${userId}`}
+    match /channel_members/{docId} {
+      allow read: if isSignedIn() && resource.data.orgId == orgId();
+      allow create, delete: if isSignedIn() && isManager() && request.resource.data.orgId == orgId();
+      allow update: if false;
+    }
+
+    // payroll_runs/{payrollId}
+    match /payroll_runs/{payrollId} {
+      allow read: if isSignedIn() && resource.data.orgId == orgId() && isManager();
+      allow create, update, delete: if isSignedIn() && isManager() && request.resource.data.orgId == orgId();
+    }
+  }
+}
