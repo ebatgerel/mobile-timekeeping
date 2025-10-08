@@ -1,0 +1,25 @@
+# Flutter/Dart/Pub related
+**/doc/api/
+.dart_tool/
+.packages
+build/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# VS Code related
+.vscode/
+
+# Flutter generated platforms (will be created by `flutter create .`)
+android/
+ios/
+linux/
+macos/
+web/
+windows/
+
+# Others
+.DS_Store
